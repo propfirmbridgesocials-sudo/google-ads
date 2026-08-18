@@ -53,11 +53,27 @@ def create_client_storage() -> Any:
             raise ValueError(
                 "Storage path must be provided via GOOGLE_ADS_MCP_STORAGE_PATH environment variable."
             )
-        from key_value.aio.stores.filetree import FileTreeStore
+        from key_value.aio.stores.filetree import (
+            FileTreeStore,
+            FileTreeV1CollectionSanitizationStrategy,
+            FileTreeV1KeySanitizationStrategy,
+        )
 
         path_obj = pathlib.Path(st_path)
         path_obj.mkdir(parents=True, exist_ok=True)
-        store = FileTreeStore(data_directory=path_obj)
+        # Keys are used as filesystem paths, and OAuth client ids are not
+        # always filename-safe: a client using a client-id metadata document
+        # identifies itself with a URL, whose slashes become directories that
+        # were never created. Sanitize as the firestore backend already does.
+        store = FileTreeStore(
+            data_directory=path_obj,
+            key_sanitization_strategy=FileTreeV1KeySanitizationStrategy(
+                directory=path_obj
+            ),
+            collection_sanitization_strategy=FileTreeV1CollectionSanitizationStrategy(
+                directory=path_obj
+            ),
+        )
     elif st_type == "redis":
         from key_value.aio.stores.redis import RedisStore
 
